@@ -2,7 +2,10 @@
 #define CAMERA_HPP_
 
 #include "imagePlane.hpp"
-#include "util.hpp"
+#include "point.hpp"
+#include "vector.hpp"
+#include "ray.hpp"
+
 #include <vector>
 
 using std::vector;

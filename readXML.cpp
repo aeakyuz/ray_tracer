@@ -1,218 +1,474 @@
+#include "tinyxml2.h"
 #include <cstdio>
 #include <iostream>
-#include "tinyxml2.h"
-#include "util.hpp"
+#include <sstream>
+#include <string>
+#include <vector>
 
-using std::cerr;
-using std::endl;
-using std::string;
-using std::cout;
+using namespace tinyxml2;
+using namespace std;
 
-using tinyxml2::XMLDocument;
-using tinyxml2::XML_SUCCESS;
-using tinyxml2::XMLElement;
+// Data structures to hold scene information
+struct Color {
+  float r, g, b;
+};
 
-using rtracer::Point;
-using rtracer::Vector;
-using rtracer::Ray;
+struct Vector3 {
+  float x, y, z;
+};
 
-int main() {
+struct Vertex {
+  float x, y, z;
+};
+
+struct TextureCoord {
+  float u, v;
+};
+
+struct Normal {
+  float x, y, z;
+};
+
+struct Material {
+  int id;
+  Color ambient;
+  Color diffuse;
+  Color specular;
+  Color mirrorReflectance;
+  float phongExponent;
+  float textureFactor;
+};
+
+struct PointLight {
+  int id;
+  Vector3 position;
+  Color intensity;
+};
+
+struct TriangularLight {
+  int id;
+  Vector3 vertex1, vertex2, vertex3;
+  Color intensity;
+};
+
+struct Face {
+  int vertexIndices[3];
+  int textureIndices[3];
+  int normalIndices[3];
+};
+
+struct Mesh {
+  int id;
+  int materialId;
+  vector<Face> faces;
+};
+
+class Scene {
+public:
+  int maxRayTraceDepth;
+  Color backgroundColor;
+
+  // Camera parameters
+  Vector3 cameraPosition;
+  Vector3 cameraGaze;
+  Vector3 cameraUp;
+  float nearPlane[4]; // left, right, bottom, top
+  float nearDistance;
+  int imageResolution[2]; // nx, ny
+
+  // Lighting
+  Color ambientLight;
+  vector<PointLight> pointLights;
+  vector<TriangularLight> triangularLights;
+
+  // Materials
+  vector<Material> materials;
+
+  // Geometry
+  vector<Vertex> vertices;
+  vector<TextureCoord> textureCoords;
+  vector<Normal> normals;
+  string textureImage;
+  vector<Mesh> meshes;
+
+  bool loadFromXML(const string &filename) {
     XMLDocument doc;
-    if (doc.LoadFile("complete.xml") != XML_SUCCESS) {
-        cerr << "Error loading XML file!" << endl;
-        return -1;
+    if (doc.LoadFile(filename.c_str()) != XML_SUCCESS) {
+      cerr << "Error loading XML file: " << filename << endl;
+      return false;
     }
 
-    // Access the root element
-    XMLElement* scene = doc.FirstChildElement("scene");
-    if (!scene) {
-        cerr << "No <scene> element found!" << endl;
-        return -1;
+    XMLElement *sceneElement = doc.FirstChildElement("scene");
+    if (!sceneElement) {
+      cerr << "No <scene> element found" << endl;
+      return false;
     }
 
-    // Read maxraytracedepth
-    XMLElement* maxDepthElem = scene->FirstChildElement("maxraytracedepth");
-    int maxRayTraceDepth = maxDepthElem ? std::stoi(maxDepthElem->GetText()) : 6;
+    // Parse basic scene parameters
+    parseBasicParameters(sceneElement);
 
-    // Read backgroundColor
-    XMLElement* bgColorElem = scene->FirstChildElement("backgroundColor");
-    float bgColor[3] = {0, 0, 0};
+    // Parse camera
+    parseCamera(sceneElement);
+
+    // Parse lights
+    parseLights(sceneElement);
+
+    // Parse materials
+    parseMaterials(sceneElement);
+
+    // Parse geometry data
+    parseGeometry(sceneElement);
+
+    // Parse objects
+    parseObjects(sceneElement);
+
+    return true;
+  }
+
+private:
+  void parseFaceVertex(const string &vertexStr, Face &face, int vertexIndex) {
+    size_t slash1 = vertexStr.find('/');
+    size_t slash2 = vertexStr.find('/', slash1 + 1);
+
+    if (slash1 != string::npos && slash2 != string::npos) {
+      face.vertexIndices[vertexIndex] = stoi(vertexStr.substr(0, slash1)) - 1;
+      face.textureIndices[vertexIndex] =
+          stoi(vertexStr.substr(slash1 + 1, slash2 - slash1 - 1)) - 1;
+      face.normalIndices[vertexIndex] = stoi(vertexStr.substr(slash2 + 1)) - 1;
+    } else {
+      // Handle error case
+      cerr << "Malformed face vertex: " << vertexStr << endl;
+    }
+  }
+  void parseBasicParameters(XMLElement *sceneElement) {
+    // Max ray trace depth
+    XMLElement *maxDepthElem =
+        sceneElement->FirstChildElement("maxraytracedepth");
+    if (maxDepthElem) {
+      maxRayTraceDepth = maxDepthElem->IntText();
+    }
+
+    // Background color
+    XMLElement *bgColorElem =
+        sceneElement->FirstChildElement("backgroundColor");
     if (bgColorElem) {
-        sscanf(bgColorElem->GetText(), "%f %f %f", &bgColor[0], &bgColor[1], &bgColor[2]);
+      const char *bgColorText = bgColorElem->GetText();
+      sscanf(bgColorText, "%f %f %f", &backgroundColor.r, &backgroundColor.g,
+             &backgroundColor.b);
+    }
+  }
+
+  void parseCamera(XMLElement *sceneElement) {
+    XMLElement *cameraElem = sceneElement->FirstChildElement("camera");
+    if (!cameraElem)
+      return;
+
+    // Camera position
+    XMLElement *posElem = cameraElem->FirstChildElement("position");
+    if (posElem) {
+      const char *posText = posElem->GetText();
+      sscanf(posText, "%f %f %f", &cameraPosition.x, &cameraPosition.y,
+             &cameraPosition.z);
     }
 
-    // Read camera
-    XMLElement* cameraElem = scene->FirstChildElement("camera");
-    if (cameraElem) {
-        XMLElement* posElem = cameraElem->FirstChildElement("position");
-        float camPos[3] = {0, 0, 0};
-        if (posElem) {
-            sscanf(posElem->GetText(), "%f %f %f", &camPos[0], &camPos[1], &camPos[2]);
-        }
-
-        XMLElement* gazeElem = cameraElem->FirstChildElement("gaze");
-        float gaze[3] = {0, 0, -1};
-        if (gazeElem) {
-            sscanf(gazeElem->GetText(), "%f %f %f", &gaze[0], &gaze[1], &gaze[2]);
-        }
-
-        XMLElement* upElem = cameraElem->FirstChildElement("up");
-        float up[3] = {0, 1, 0};
-        if (upElem) {
-            sscanf(upElem->GetText(), "%f %f %f", &up[0], &up[1], &up[2]);
-        }
-
-        XMLElement* nearPlaneElem = cameraElem->FirstChildElement("nearPlane");
-        float nearPlane[4] = {-1, 1, -1, 1};
-        if (nearPlaneElem) {
-            sscanf(nearPlaneElem->GetText(), "%f %f %f %f", &nearPlane[0], &nearPlane[1], &nearPlane[2], &nearPlane[3]);
-        }
-
-        XMLElement* nearDistElem = cameraElem->FirstChildElement("neardistance");
-        float nearDistance = nearDistElem ? std::stof(nearDistElem->GetText()) : 1.0f;
-
-        XMLElement* resElem = cameraElem->FirstChildElement("imageresolution");
-        int resolution[2] = {800, 800};
-        if (resElem) {
-            sscanf(resElem->GetText(), "%d %d", &resolution[0], &resolution[1]);
-        }
+    // Camera gaze direction
+    XMLElement *gazeElem = cameraElem->FirstChildElement("gaze");
+    if (gazeElem) {
+      const char *gazeText = gazeElem->GetText();
+      sscanf(gazeText, "%f %f %f", &cameraGaze.x, &cameraGaze.y, &cameraGaze.z);
     }
 
-    // Read lights
-    XMLElement* lightsElem = scene->FirstChildElement("lights");
-    if (lightsElem) {
-        XMLElement* ambientElem = lightsElem->FirstChildElement("ambientlight");
-        float ambientLight[3] = {25, 25, 25};
-        if (ambientElem) {
-            sscanf(ambientElem->GetText(), "%f %f %f", &ambientLight[0], &ambientLight[1], &ambientLight[2]);
-        }
-
-        XMLElement* pointLightElem = lightsElem->FirstChildElement("pointlight");
-        while (pointLightElem) {
-            int id = pointLightElem->IntAttribute("id");
-            XMLElement* posElem = pointLightElem->FirstChildElement("position");
-            float pos[3] = {0, 0, 0};
-            if (posElem) {
-                sscanf(posElem->GetText(), "%f %f %f", &pos[0], &pos[1], &pos[2]);
-            }
-
-            XMLElement* intensityElem = pointLightElem->FirstChildElement("intensity");
-            float intensity[3] = {1000, 1000, 1000};
-            if (intensityElem) {
-                sscanf(intensityElem->GetText(), "%f %f %f", &intensity[0], &intensity[1], &intensity[2]);
-            }
-
-            pointLightElem = pointLightElem->NextSiblingElement("pointlight");
-        }
-
-        XMLElement* triLightElem = lightsElem->FirstChildElement("triangularlight");
-        while (triLightElem) {
-            int id = triLightElem->IntAttribute("id");
-            XMLElement* v1Elem = triLightElem->FirstChildElement("vertex1");
-            float v1[3] = {0, 0, 0};
-            if (v1Elem) {
-                sscanf(v1Elem->GetText(), "%f %f %f", &v1[0], &v1[1], &v1[2]);
-            }
-
-            XMLElement* v2Elem = triLightElem->FirstChildElement("vertex2");
-            float v2[3] = {1.2f, 0.5f, 0.5f};
-            if (v2Elem) {
-                sscanf(v2Elem->GetText(), "%f %f %f", &v2[0], &v2[1], &v2[2]);
-            }
-
-            XMLElement* v3Elem = triLightElem->FirstChildElement("vertex3");
-            float v3[3] = {0.5f, 0.5f, 0.5f};
-            if (v3Elem) {
-                sscanf(v3Elem->GetText(), "%f %f %f", &v3[0], &v3[1], &v3[2]);
-            }
-
-            XMLElement* intensityElem = triLightElem->FirstChildElement("intensity");
-            float intensity[3] = {800, 800, 800};
-            if (intensityElem) {
-                sscanf(intensityElem->GetText(), "%f %f %f", &intensity[0], &intensity[1], &intensity[2]);
-            }
-
-            triLightElem = triLightElem->NextSiblingElement("triangularlight");
-        }
+    // Camera up vector
+    XMLElement *upElem = cameraElem->FirstChildElement("up");
+    if (upElem) {
+      const char *upText = upElem->GetText();
+      sscanf(upText, "%f %f %f", &cameraUp.x, &cameraUp.y, &cameraUp.z);
     }
 
-    // Read materials
-    XMLElement* materialsElem = scene->FirstChildElement("materials");
-    if (materialsElem) {
-        XMLElement* materialElem = materialsElem->FirstChildElement("material");
-        while (materialElem) {
-            int id = materialElem->IntAttribute("id");
-            XMLElement* ambientElem = materialElem->FirstChildElement("ambient");
-            float ambient[3] = {1, 1, 1};
-            if (ambientElem) {
-                sscanf(ambientElem->GetText(), "%f %f %f", &ambient[0], &ambient[1], &ambient[2]);
-            }
-
-            XMLElement* diffuseElem = materialElem->FirstChildElement("diffuse");
-            float diffuse[3] = {1, 1, 1};
-            if (diffuseElem) {
-                sscanf(diffuseElem->GetText(), "%f %f %f", &diffuse[0], &diffuse[1], &diffuse[2]);
-            }
-
-            XMLElement* specularElem = materialElem->FirstChildElement("specular");
-            float specular[3] = {1, 1, 1};
-            if (specularElem) {
-                sscanf(specularElem->GetText(), "%f %f %f", &specular[0], &specular[1], &specular[2]);
-            }
-
-            XMLElement* mirrorElem = materialElem->FirstChildElement("mirrorreflactance");
-            float mirror[3] = {0, 0, 0};
-            if (mirrorElem) {
-                sscanf(mirrorElem->GetText(), "%f %f %f", &mirror[0], &mirror[1], &mirror[2]);
-            }
-
-            XMLElement* phongElem = materialElem->FirstChildElement("phongexponent");
-            int phongExponent = phongElem ? std::stoi(phongElem->GetText()) : 1;
-
-            XMLElement* textureElem = materialElem->FirstChildElement("texturefactor");
-            float textureFactor = textureElem ? std::stof(textureElem->GetText()) : 0.5f;
-
-            materialElem = materialElem->NextSiblingElement("material");
-        }
+    // Near plane
+    XMLElement *nearPlaneElem = cameraElem->FirstChildElement("nearPlane");
+    if (nearPlaneElem) {
+      const char *nearPlaneText = nearPlaneElem->GetText();
+      sscanf(nearPlaneText, "%f %f %f %f", &nearPlane[0], &nearPlane[1],
+             &nearPlane[2], &nearPlane[3]);
     }
 
-    // Read vertex data
-    XMLElement* vertexDataElem = scene->FirstChildElement("vertexdata");
+    // Near distance
+    XMLElement *nearDistElem = cameraElem->FirstChildElement("neardistance");
+    if (nearDistElem) {
+      nearDistance = nearDistElem->FloatText();
+    }
+
+    // Image resolution
+    XMLElement *resElem = cameraElem->FirstChildElement("imageresolution");
+    if (resElem) {
+      const char *resText = resElem->GetText();
+      sscanf(resText, "%d %d", &imageResolution[0], &imageResolution[1]);
+    }
+  }
+
+  void parseLights(XMLElement *sceneElement) {
+    XMLElement *lightsElem = sceneElement->FirstChildElement("lights");
+    if (!lightsElem)
+      return;
+
+    // Ambient light
+    XMLElement *ambientElem = lightsElem->FirstChildElement("ambientlight");
+    if (ambientElem) {
+      const char *ambientText = ambientElem->GetText();
+      sscanf(ambientText, "%f %f %f", &ambientLight.r, &ambientLight.g,
+             &ambientLight.b);
+    }
+
+    // Point lights
+    XMLElement *pointLightElem = lightsElem->FirstChildElement("pointlight");
+    while (pointLightElem) {
+      PointLight light;
+      light.id = pointLightElem->IntAttribute("id");
+
+      XMLElement *posElem = pointLightElem->FirstChildElement("position");
+      if (posElem) {
+        const char *posText = posElem->GetText();
+        sscanf(posText, "%f %f %f", &light.position.x, &light.position.y,
+               &light.position.z);
+      }
+
+      XMLElement *intensityElem =
+          pointLightElem->FirstChildElement("intensity");
+      if (intensityElem) {
+        const char *intensityText = intensityElem->GetText();
+        sscanf(intensityText, "%f %f %f", &light.intensity.r,
+               &light.intensity.g, &light.intensity.b);
+      }
+
+      pointLights.push_back(light);
+      pointLightElem = pointLightElem->NextSiblingElement("pointlight");
+    }
+
+    // Triangular lights
+    XMLElement *triLightElem = lightsElem->FirstChildElement("triangularlight");
+    while (triLightElem) {
+      TriangularLight light;
+      light.id = triLightElem->IntAttribute("id");
+
+      XMLElement *v1Elem = triLightElem->FirstChildElement("vertex1");
+      if (v1Elem) {
+        const char *v1Text = v1Elem->GetText();
+        sscanf(v1Text, "%f %f %f", &light.vertex1.x, &light.vertex1.y,
+               &light.vertex1.z);
+      }
+
+      XMLElement *v2Elem = triLightElem->FirstChildElement("vertex2");
+      if (v2Elem) {
+        const char *v2Text = v2Elem->GetText();
+        sscanf(v2Text, "%f %f %f", &light.vertex2.x, &light.vertex2.y,
+               &light.vertex2.z);
+      }
+
+      XMLElement *v3Elem = triLightElem->FirstChildElement("vertex3");
+      if (v3Elem) {
+        const char *v3Text = v3Elem->GetText();
+        sscanf(v3Text, "%f %f %f", &light.vertex3.x, &light.vertex3.y,
+               &light.vertex3.z);
+      }
+
+      XMLElement *intensityElem = triLightElem->FirstChildElement("intensity");
+      if (intensityElem) {
+        const char *intensityText = intensityElem->GetText();
+        sscanf(intensityText, "%f %f %f", &light.intensity.r,
+               &light.intensity.g, &light.intensity.b);
+      }
+
+      triangularLights.push_back(light);
+      triLightElem = triLightElem->NextSiblingElement("triangularlight");
+    }
+  }
+
+  void parseMaterials(XMLElement *sceneElement) {
+    XMLElement *materialsElem = sceneElement->FirstChildElement("materials");
+    if (!materialsElem)
+      return;
+
+    XMLElement *materialElem = materialsElem->FirstChildElement("material");
+    while (materialElem) {
+      Material mat;
+      mat.id = materialElem->IntAttribute("id");
+
+      XMLElement *ambientElem = materialElem->FirstChildElement("ambient");
+      if (ambientElem) {
+        const char *ambientText = ambientElem->GetText();
+        sscanf(ambientText, "%f %f %f", &mat.ambient.r, &mat.ambient.g,
+               &mat.ambient.b);
+      }
+
+      XMLElement *diffuseElem = materialElem->FirstChildElement("diffuse");
+      if (diffuseElem) {
+        const char *diffuseText = diffuseElem->GetText();
+        sscanf(diffuseText, "%f %f %f", &mat.diffuse.r, &mat.diffuse.g,
+               &mat.diffuse.b);
+      }
+
+      XMLElement *specularElem = materialElem->FirstChildElement("specular");
+      if (specularElem) {
+        const char *specularText = specularElem->GetText();
+        sscanf(specularText, "%f %f %f", &mat.specular.r, &mat.specular.g,
+               &mat.specular.b);
+      }
+
+      XMLElement *mirrorElem =
+          materialElem->FirstChildElement("mirrorreflactance");
+      if (mirrorElem) {
+        const char *mirrorText = mirrorElem->GetText();
+        sscanf(mirrorText, "%f %f %f", &mat.mirrorReflectance.r,
+               &mat.mirrorReflectance.g, &mat.mirrorReflectance.b);
+      }
+
+      XMLElement *phongElem = materialElem->FirstChildElement("phongexponent");
+      if (phongElem) {
+        mat.phongExponent = phongElem->FloatText();
+      }
+
+      XMLElement *textureElem =
+          materialElem->FirstChildElement("texturefactor");
+      if (textureElem) {
+        mat.textureFactor = textureElem->FloatText();
+      }
+
+      materials.push_back(mat);
+      materialElem = materialElem->NextSiblingElement("material");
+    }
+  }
+
+  void parseGeometry(XMLElement *sceneElement) {
+    // Vertex data
+    XMLElement *vertexDataElem = sceneElement->FirstChildElement("vertexdata");
     if (vertexDataElem) {
-        const char* vertexText = vertexDataElem->GetText();
-        // Parse vertexText into a list of floats
-        // You can use stringstream or other methods to split the string into floats
+      const char *vertexText = vertexDataElem->GetText();
+      stringstream ss(vertexText);
+      Vertex v;
+      while (ss >> v.x >> v.y >> v.z) {
+        vertices.push_back(v);
+      }
     }
 
-    // Read texture data
-    XMLElement* textureDataElem = scene->FirstChildElement("texturedata");
+    // Texture data
+    XMLElement *textureDataElem =
+        sceneElement->FirstChildElement("texturedata");
     if (textureDataElem) {
-        const char* textureText = textureDataElem->GetText();
-        // Parse textureText into a list of floats
+      const char *textureText = textureDataElem->GetText();
+      stringstream ss(textureText);
+      TextureCoord tc;
+      while (ss >> tc.u >> tc.v) {
+        textureCoords.push_back(tc);
+      }
     }
 
-    // Read texture image
-    XMLElement* textureImageElem = scene->FirstChildElement("textureimage");
-    string textureImage = textureImageElem ? textureImageElem->GetText() : "";
+    // Normal data
+    XMLElement *normalDataElem = sceneElement->FirstChildElement("normaldata");
+    if (normalDataElem) {
+      const char *normalText = normalDataElem->GetText();
+      stringstream ss(normalText);
+      Normal n;
+      while (ss >> n.x >> n.y >> n.z) {
+        normals.push_back(n);
+      }
+    }
 
-    // Read objects
-    XMLElement* objectsElem = scene->FirstChildElement("objects");
-    if (objectsElem) {
-        XMLElement* meshElem = objectsElem->FirstChildElement("mesh");
-        while (meshElem) {
-            int id = meshElem->IntAttribute("id");
-            XMLElement* materialIdElem = meshElem->FirstChildElement("materialid");
-            int materialId = materialIdElem ? std::stoi(materialIdElem->GetText()) : 1;
+    // Texture image
+    XMLElement *textureImageElem =
+        sceneElement->FirstChildElement("textureimage");
+    if (textureImageElem) {
+      textureImage = textureImageElem->GetText();
+    }
+  }
 
-            XMLElement* facesElem = meshElem->FirstChildElement("faces");
-            if (facesElem) {
-                const char* facesText = facesElem->GetText();
-                // Parse facesText into a list of integers
-            }
+  void parseObjects(XMLElement *sceneElement) {
+    XMLElement *objectsElem = sceneElement->FirstChildElement("objects");
+    if (!objectsElem)
+      return;
 
-            meshElem = meshElem->NextSiblingElement("mesh");
+    XMLElement *meshElem = objectsElem->FirstChildElement("mesh");
+    while (meshElem) {
+      Mesh mesh;
+      mesh.id = meshElem->IntAttribute("id");
+
+      XMLElement *materialIdElem = meshElem->FirstChildElement("materialid");
+      if (materialIdElem) {
+        mesh.materialId = materialIdElem->IntText();
+      }
+
+      XMLElement *facesElem = meshElem->FirstChildElement("faces");
+      if (facesElem) {
+        const char *facesText = facesElem->GetText();
+        istringstream iss(facesText);
+        string vertexStr;
+
+        while (iss >> vertexStr) {
+          Face face;
+          // First vertex
+          parseFaceVertex(vertexStr, face, 0);
+
+          // Second vertex (must exist for a valid face)
+          if (!(iss >> vertexStr))
+            break;
+          parseFaceVertex(vertexStr, face, 1);
+
+          // Third vertex (must exist for a valid face)
+          if (!(iss >> vertexStr))
+            break;
+          parseFaceVertex(vertexStr, face, 2);
+
+          mesh.faces.push_back(face);
         }
-    }
+      }
 
-    return 0;
+      meshes.push_back(mesh);
+      meshElem = meshElem->NextSiblingElement("mesh");
+    }
+  }
+};
+
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    cerr << "Usage: " << argv[0] << " <scene.xml>" << endl;
+    return 1;
+  }
+
+  Scene scene;
+  if (!scene.loadFromXML(argv[1])) {
+    cerr << "Failed to load scene file" << endl;
+    return 1;
+  }
+
+  // Print some information to verify parsing
+  cout << "Scene loaded successfully:" << endl;
+  cout << "  Max ray trace depth: " << scene.maxRayTraceDepth << endl;
+  cout << "  Background color: (" << scene.backgroundColor.r << ", "
+       << scene.backgroundColor.g << ", " << scene.backgroundColor.b << ")"
+       << endl;
+  cout << "  Camera position: (" << scene.cameraPosition.x << ", "
+       << scene.cameraPosition.y << ", " << scene.cameraPosition.z << ")"
+       << endl;
+  cout << "  Image resolution: " << scene.imageResolution[0] << "x"
+       << scene.imageResolution[1] << endl;
+  cout << "  Number of vertices: " << scene.vertices.size() << endl;
+  cout << "  Number of meshes: " << scene.meshes.size() << endl;
+
+  // Print face information for the first mesh
+  if (!scene.meshes.empty()) {
+    cout << "Number of faces parsed: " << scene.meshes[0].faces.size() << endl;
+    // Modified debug output to show original indices (1-based)
+    for (size_t i = 0; i < scene.meshes.front().faces.size(); i++) {
+      const Face &f = scene.meshes.front().faces[i];
+      cout << "Face " << i + 1 << ":\n";
+      cout << "  Vertex indices: " << f.vertexIndices[0] + 1 << ", "
+           << f.vertexIndices[1] + 1 << ", " << f.vertexIndices[2] + 1 << "\n";
+      cout << "  Texture indices: " << f.textureIndices[0] + 1 << ", "
+           << f.textureIndices[1] + 1 << ", " << f.textureIndices[2] + 1
+           << "\n";
+      cout << "  Normal indices: " << f.normalIndices[0] + 1 << ", "
+           << f.normalIndices[1] + 1 << ", " << f.normalIndices[2] + 1 << "\n";
+    }
+  }
+  return 0;
 }

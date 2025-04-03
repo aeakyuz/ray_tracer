@@ -31,7 +31,7 @@ const int Camera::setDistance(const int dist) { return distance = dist; }
 
 const vector<Ray> Camera::calculateViewRays(void) const {
   vector<Ray> rays = vector<Ray>();
-  const Point M = position + (-gaze * distance);
+  const Point M = position + (gaze * distance);
   const Point Q = M + (Vector::UNIT_VEC_U * imagePlane.getL()) +
                   (Vector::UNIT_VEC_V * imagePlane.getT());
   for (size_t i = 0; i < imagePlane.getNx(); ++i) {
@@ -44,7 +44,7 @@ const vector<Ray> Camera::calculateViewRays(void) const {
           Q + (Vector::UNIT_VEC_U * Su) + (-Vector::UNIT_VEC_V * Sv);
 
       // Create ray from camera position to S
-      rays.push_back(Ray(position, S));
+      rays.push_back(Ray(position, S).normalizeRay());
     }
   }
   return rays;

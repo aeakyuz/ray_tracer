@@ -24,6 +24,15 @@ const Point &Triangle::setVertex(const size_t index, const Point &vertex) {
   return vertices.at(index) = vertex;
 }
 
-const Point & Triangle::operator[](const size_t index) const {
-  return getVertex(index);
+Point & Triangle::operator[](const size_t index) {
+  return vertices.at(index);
+}
+
+namespace rtracer {
+ostream &operator<<(ostream &os, const Triangle &tri) {
+  os << tri.getVertex(0) << ", "
+    << tri.getVertex(1) << ", "
+    << tri.getVertex(2) << std::endl;
+  return os;
+}
 }
