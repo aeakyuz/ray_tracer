@@ -28,7 +28,7 @@ const Vector Material::getMirror(void) const {
   return mirror;
 }
 
-const double Material::getPhonge(void) const {
+const double Material::getPhong(void) const {
   return phonge;
 }
 

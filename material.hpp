@@ -25,7 +25,7 @@ public:
   const Vector getDiffuse(void) const;
   const Vector getSpecular(void) const;
   const Vector getMirror(void) const;
-  const double getPhonge(void) const;
+  const double getPhong(void) const;
   const double getTextureFactor(void) const;
   const size_t getId(void) const;
 

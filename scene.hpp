@@ -39,7 +39,7 @@ public:
   const Vector getColor(const Point &x, const Vector &w_o, const Material &mat,
                         const Face &obj) const;
   bool saveToPPM(const std::string &filename) const;
-  double findMaxColorValue() const;
+  const Vector findMaxColorValue(void) const;
   void debug() const;
 private:
   void parseBasicParameters(tinyxml2::XMLElement *);

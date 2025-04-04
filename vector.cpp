@@ -1,5 +1,6 @@
 #include "vector.hpp"
 #include "point.hpp"
+#include "util.hpp"
 #include <cmath>
 #include <stdexcept>
 
@@ -75,6 +76,19 @@ const Vector Vector::crossProduct(const Vector &other) const {
   const double c_v = w * other.u - u * other.w;
   const double c_w = u * other.v - v * other.u;
   return Vector(c_u, c_v, c_w);
+}
+
+const Vector Vector::normalize(void) {
+  double length = getLength();
+  if (length <= 0.0 + EPS && length >= 0.0 - EPS) {
+    return *this;
+  } else if (length <= 1.0 + EPS && length >= 1.0 - EPS) {
+    return *this;
+  }
+  u = u / length;
+  v = v / length;
+  w = w / length;
+  return *this;
 }
 
 namespace rtracer {

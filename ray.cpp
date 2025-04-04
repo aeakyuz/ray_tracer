@@ -29,21 +29,7 @@ const Point Ray::getOrigin(void) const { return origin; }
 const Vector Ray::getDirection(void) const { return direction; }
 
 const Ray Ray::normalizeRay(void) {
-  double length = direction.getLength();
-  if (length <= 0.0 + EPS && length >= 0.0 - EPS) {
-    return *this;
-  } else if (length <= 1.0 + EPS && length >= 1.0 - EPS) {
-    return *this;
-  }
-  // if (length == 0.0) {
-  //   return *this;
-  // } else if (length <= 1.0 + EPS && length >= 1.0 - EPS) {
-  //   return *this;
-  // }
-
-  direction.setU(direction.getU() / length);
-  direction.setV(direction.getV() / length);
-  direction.setW(direction.getW() / length);
+  direction.normalize();
   return *this;
 }
 

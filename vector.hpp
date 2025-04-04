@@ -46,6 +46,7 @@ public:
 
   const double dotProduct(const Vector &other) const;
   const Vector crossProduct(const Vector &other) const;
+  const Vector normalize(void);
 
   friend ostream &operator<<(ostream &os, const Vector &ray);
 };

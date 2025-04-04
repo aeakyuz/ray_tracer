@@ -12,8 +12,8 @@
 <lights>
 <ambientlight>25 25 25</ambientlight>
 <pointlight id="1">
-<position>-0.8 -0.8 0</position>
-<intensity>120 30 30</intensity>
+<position>-0.8 -0.8 0.0</position>
+<intensity>200 25 25</intensity>
 </pointlight>
 <triangularlight id="2">
 <vertex1>0 0 0</vertex1>
@@ -28,7 +28,7 @@
 <diffuse>1 1 1</diffuse>
 <specular>1 1 1</specular>
 <mirrorreflactance>0 0 0</mirrorreflactance>
-<phongexponent>1</phongexponent>
+<phongexponent>50</phongexponent>
 <texturefactor>0.5</texturefactor>
 </material>
 </materials>

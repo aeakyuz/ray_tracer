@@ -459,16 +459,32 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
     // std::cout << "cos: " << cos << endl;
     cos = std::max(0.0, cos);
     double dist = x.calcDistance(pl.getPos());
-    Vector v = Vector(
-      mat.getDiffuse().getU() * cos * pl.getIntensity().getU() / (dist*dist),
-      mat.getDiffuse().getV() * cos * pl.getIntensity().getV() / (dist*dist),
-      mat.getDiffuse().getW() * cos * pl.getIntensity().getW() / (dist*dist)
-    );
+    Vector v = Vector(mat.getDiffuse().getU() * cos * pl.getIntensity().getU() /
+                          (dist * dist),
+                      mat.getDiffuse().getV() * cos * pl.getIntensity().getV() /
+                          (dist * dist),
+                      mat.getDiffuse().getW() * cos * pl.getIntensity().getW() /
+                          (dist * dist));
     L_d = L_d + v;
   }
 
   // calculate specular
   Vector L_s = Vector();
+  for (auto pl : pointLights) {
+    Vector xToLight = Ray(x, pl.getPos()).getDirection();
+    Vector l = xToLight.normalize();
+    Vector e = -w_o;
+    Vector h = (l + e);
+    h.normalize();
+
+    double nhp = pow(obj.getNormal().dotProduct(h), mat.getPhong());
+    Vector L =
+        Vector(pl.getIntensity().getU() * mat.getSpecular().getU() * nhp,
+               pl.getIntensity().getV() * mat.getSpecular().getV() * nhp,
+               pl.getIntensity().getW() * mat.getSpecular().getW() * nhp);
+    L_s = L_s + L;
+  }
+
   return L_a + L_d + L_s;
 }
 
@@ -477,12 +493,11 @@ bool Scene::saveToPPM(const std::string &filename) const {
     return false;
 
   // Find maximum color value in the image
-  double maxVal = findMaxColorValue();
-  // std::cout << "Max val is " << maxVal << endl;
-  if (maxVal <= 0)
-    maxVal = 1.0; // Avoid division by zero
+  Vector maxVals = findMaxColorValue();
+  double maxVal = std::max({maxVals[0], maxVals[1], maxVals[2]});
+      // std::cout << "Max vals: " << maxVals << endl;
 
-  std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+      std::ofstream file(filename, std::ios::binary | std::ios::trunc);
   if (!file)
     return false;
 
@@ -490,40 +505,44 @@ bool Scene::saveToPPM(const std::string &filename) const {
 
   for (const auto &row : image) {
     for (const Vector &pixel : row) {
-      // // Normalize and apply simple gamma correction
-      // Vector normalized(
-      //     pow(pixel.getU() / maxVal, 1/2.2f),
-      //     pow(pixel.getV() / maxVal, 1/2.2f),
-      //     pow(pixel.getW() / maxVal, 1/2.2f)
-      // );
-      //
-      // // Clamp and convert to 8-bit
-      // unsigned char r = static_cast<unsigned
-      // char>(std::clamp(normalized.getU(), 0.0, 1.0) * 255); unsigned char
-      // g = static_cast<unsigned char>(std::clamp(normalized.getV(),
-      // 0.0, 1.0) * 255); unsigned char b = static_cast<unsigned
-      // char>(std::clamp(normalized.getW(), 0.0, 1.0) * 255);
+      // Normalize and apply simple gamma correction
+      Vector normalized(pow(pixel.getU() / maxVal, 1 / 2.2f),
+                        pow(pixel.getV() / maxVal, 1 / 2.2f),
+                        pow(pixel.getW() / maxVal, 1 / 2.2f));
 
-      // file << r << g << b;
-      unsigned char r = static_cast<unsigned char>(pixel.getU());
-      unsigned char g = static_cast<unsigned char>(pixel.getV());
-      unsigned char b = static_cast<unsigned char>(pixel.getW());
-      // printf("r,g,b : %d,%d,%d\n", r, g, b);
+      // Clamp and convert to 8-bit
+      unsigned char r = static_cast<unsigned char>(
+          std::clamp(normalized.getU(), 0.0, 1.0) * 255);
+      unsigned char g = static_cast<unsigned char>(
+          std::clamp(normalized.getV(), 0.0, 1.0) * 255);
+      unsigned char b = static_cast<unsigned char>(
+          std::clamp(normalized.getW(), 0.0, 1.0) * 255);
+
       file << r << g << b;
+
+      // unsigned char r = static_cast<unsigned char>(pixel.getU());
+      // unsigned char g = static_cast<unsigned char>(pixel.getV());
+      // unsigned char b = static_cast<unsigned char>(pixel.getW());
+      // // printf("r,g,b : %d,%d,%d\n", r, g, b);
+      // file << r << g << b;
     }
   }
   return true;
 }
 
-double Scene::findMaxColorValue() const {
-  double maxVal = 0.0;
+const Vector Scene::findMaxColorValue(void) const {
+  double maxU = 0.0, maxV = 0.0, maxW = 0.0;
   for (const auto &row : image) {
     for (const Vector &pixel : row) {
-      maxVal = std::max({maxVal, pixel.getU(), pixel.getV(), pixel.getW(),
-                         bgColor.getU(), bgColor.getV(), bgColor.getW()});
+      maxU = std::max({maxU, pixel.getU(), bgColor.getU()});
+      maxV = std::max({maxV, pixel.getV(), bgColor.getV()});
+      maxW = std::max({maxW, pixel.getW(), bgColor.getW()});
     }
   }
-  return maxVal;
+  maxU = maxU == 0.0 ? 1.0 : maxU;
+  maxV = maxV == 0.0 ? 1.0 : maxV;
+  maxW = maxW == 0.0 ? 1.0 : maxW;
+  return Vector(maxU, maxV, maxW);
 }
 
 void Scene::debug() const {
