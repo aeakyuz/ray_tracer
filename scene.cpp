@@ -418,21 +418,14 @@ void Scene::rayTrace(void) {
 
       // Create ray from camera position to S
       Ray viewRay = Ray(cam.getPosition(), S).normalizeRay();
-      FaceInfo fi = findClosestObj(viewRay);
-      if (fi.found) { // if obj is not null
-        Point x = viewRay.calculatePoint(fi.t_min);
-        // std::cout << "itsct pnt: " << x << endl;
-        image[j][i] =
-            getColor(x, viewRay.getDirection(), fi.mat, fi.face);
-      } else {
-        image[j][i] = bgColor;
-      }
+      image[j][i] = rayTrace(viewRay, 1);
     }
   }
 }
 
 const Vector Scene::getColor(const Point &x, const Vector &w_o,
-                             const Material &mat, const Face &obj) const {
+                             const Material &mat, const Face &obj,
+                             size_t rtCount) const {
   // calculate ambient
   Vector L_a = Vector(ambient.getLum().getU() * mat.getAmbient().getU(),
                       ambient.getLum().getV() * mat.getAmbient().getV(),
@@ -509,8 +502,26 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
       L_s = L_s + L;
     }
   }
-
-  return L_a + L_d + L_s;
+  if (mat.getMirror() != Vector::ZERO_VECTOR) {
+    Vector d = w_o;
+    Vector n = obj.getNormal();
+    if (isWithinEps(0.0, d.dotProduct(n))) {
+      return L_a + L_d + L_s;
+    }
+    Vector r = d + n * ((-d).dotProduct(n)) * 2;
+    r.normalize();
+    Ray reflection_ray = Ray(x, r);
+    Ray ray_adjusted = Ray(reflection_ray.calculatePoint(EPS), r);
+    Vector mirror = rayTrace(ray_adjusted, rtCount + 1);
+    Vector L_m = Vector(
+      mirror.getU() * mat.getMirror().getU(),
+      mirror.getV() * mat.getMirror().getV(),
+      mirror.getW() * mat.getMirror().getW()
+    );
+    return L_a + L_d + L_s + L_m;
+  } else {
+    return L_a + L_d + L_s;
+  }
 }
 
 bool Scene::saveToPPM(const std::string &filename) const {
@@ -530,26 +541,30 @@ bool Scene::saveToPPM(const std::string &filename) const {
 
   for (const auto &row : image) {
     for (const Vector &pixel : row) {
-      // Normalize and apply simple gamma correction
-      Vector normalized(pow(pixel.getU() / maxVal, 1 / 2.2f),
-                        pow(pixel.getV() / maxVal, 1 / 2.2f),
-                        pow(pixel.getW() / maxVal, 1 / 2.2f));
+      // // Normalize and apply simple gamma correction
+      // Vector normalized(pow(pixel.getU() / maxVal, 1 / 2.2f),
+      //                   pow(pixel.getV() / maxVal, 1 / 2.2f),
+      //                   pow(pixel.getW() / maxVal, 1 / 2.2f));
+      //
+      // // Clamp and convert to 8-bit
+      // unsigned char r = static_cast<unsigned char>(
+      //     std::clamp(normalized.getU(), 0.0, 1.0) * 255);
+      // unsigned char g = static_cast<unsigned char>(
+      //     std::clamp(normalized.getV(), 0.0, 1.0) * 255);
+      // unsigned char b = static_cast<unsigned char>(
+      //     std::clamp(normalized.getW(), 0.0, 1.0) * 255);
+      //
+      // file << r << g << b;
 
       // Clamp and convert to 8-bit
       unsigned char r = static_cast<unsigned char>(
-          std::clamp(normalized.getU(), 0.0, 1.0) * 255);
+          std::clamp((int)pixel.getU(), 0, 255));
       unsigned char g = static_cast<unsigned char>(
-          std::clamp(normalized.getV(), 0.0, 1.0) * 255);
+          std::clamp((int)pixel.getV(), 0, 255));
       unsigned char b = static_cast<unsigned char>(
-          std::clamp(normalized.getW(), 0.0, 1.0) * 255);
+          std::clamp((int)pixel.getW(), 0, 255));
 
       file << r << g << b;
-
-      // unsigned char r = static_cast<unsigned char>(pixel.getU());
-      // unsigned char g = static_cast<unsigned char>(pixel.getV());
-      // unsigned char b = static_cast<unsigned char>(pixel.getW());
-      // // printf("r,g,b : %d,%d,%d\n", r, g, b);
-      // file << r << g << b;
     }
   }
   return true;
@@ -598,4 +613,21 @@ const FaceInfo Scene::findClosestObj(const Ray &ray) const {
     }
   }
   return FaceInfo{obj, m, t_min, found};
+}
+
+const Vector Scene::rayTrace(const Ray &ray, size_t rtCount) const {
+  Vector color = Vector::ZERO_VECTOR;
+  if (rtCount > maxRTDepth) {
+    cout << "limit" << endl;
+    return color;
+  }
+  FaceInfo fi = findClosestObj(ray);
+  if (fi.found) { // if obj is not null
+    Point x = ray.calculatePoint(fi.t_min);
+    // std::cout << "itsct pnt: " << x << endl;
+    color = getColor(x, ray.getDirection(), fi.mat, fi.face, rtCount);
+  } else {
+    color = bgColor;
+  }
+  return color;
 }

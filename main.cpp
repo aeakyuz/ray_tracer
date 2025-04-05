@@ -79,6 +79,14 @@ int main(int argc, char *argv[]) {
     std::cerr << "Failed to save image" << std::endl;
   }
 
+  // Vector a = Vector(-1, -1, 0);
+  // Vector b = Vector::UNIT_VEC_V;
+  // Vector d = a;
+  // Vector n = b;
+  // Vector r = d + n * ((-d).dotProduct(n)) * 2;
+  // r.normalize();
+  // cout << "r is " << r << endl;
+
   // TriangularLight tl = TriangularLight(
   //   Triangle(Point(0.5,0.5,0.5),
   //            Point(1.2,0.5,0.5),

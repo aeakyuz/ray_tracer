@@ -80,9 +80,9 @@ const Vector Vector::crossProduct(const Vector &other) const {
 
 const Vector Vector::normalize(void) {
   double length = getLength();
-  if (length <= 0.0 + EPS && length >= 0.0 - EPS) {
+  if (isWithinEps(length, 0.0)) {
     return *this;
-  } else if (length <= 1.0 + EPS && length >= 1.0 - EPS) {
+  } else if (isWithinEps(length, 1.0)) {
     return *this;
   }
   u = u / length;

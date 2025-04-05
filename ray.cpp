@@ -13,7 +13,9 @@ using std::endl;
 Ray::Ray() : origin(Point(0, 0, 0)), direction(Vector(0, 0, 0)) {}
 
 Ray::Ray(const Point &origin, const Vector &direction)
-: origin(origin), direction(direction) {}
+: origin(origin), direction(direction) {
+  normalizeRay();
+}
 
 Ray::Ray(const Point &from, const Point &to) {
   Vector direction = Vector(to.getU() - from.getU(), to.getV() - from.getV(),
@@ -22,6 +24,7 @@ Ray::Ray(const Point &from, const Point &to) {
 
   this->origin = origin;
   this->direction = direction;
+  normalizeRay();
 }
 
 const Point Ray::getOrigin(void) const { return origin; }

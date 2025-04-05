@@ -44,7 +44,7 @@ public:
   bool loadFromXML(const std::string xmlPath);
   void rayTrace(void);
   const Vector getColor(const Point &x, const Vector &w_o, const Material &mat,
-                        const Face &obj) const;
+                        const Face &obj, size_t rtCount) const;
   bool saveToPPM(const std::string &filename) const;
   const Vector findMaxColorValue(void) const;
   void debug() const;
@@ -58,6 +58,7 @@ private:
   void parseGeometry(tinyxml2::XMLElement *);
   void parseObjects(tinyxml2::XMLElement *);
   void parseFaceVertex(const std::string &, Face &, int);
+  const Vector rayTrace(const Ray &, size_t) const;
 };
 
 } // namespace rtracer

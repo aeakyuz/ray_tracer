@@ -10,16 +10,16 @@
 <imageresolution>800 800</imageresolution>
 </camera>
 <lights>
-<ambientlight>25 25 75</ambientlight>
+<ambientlight>25 25 25</ambientlight>
 <pointlight id="1">
-<position>-0.8 -0.8 0.0</position>
-<intensity>0 0 0</intensity>
+<position>1.1 -0.1 -3.5</position>
+<intensity>200 200 50</intensity>
 </pointlight>
 <triangularlight id="2">
-<vertex1>2.0 -1.9 -3.0</vertex1>
-<vertex2>0.2 -1.9 -1.0</vertex2>
-<vertex3>1.1 0.1 -2.0</vertex3>
-<intensity>200 200 600</intensity>
+<vertex1>3.0 -1.9 -3.0</vertex1>
+<vertex2>1.2 -1.9 -1.0</vertex2>
+<vertex3>2.1 0.1 -2.0</vertex3>
+<intensity>0 0 0</intensity>
 </triangularlight>
 </lights>
 <materials>
@@ -27,18 +27,21 @@
 <ambient>1 1 1</ambient>
 <diffuse>1 1 1</diffuse>
 <specular>1 1 1</specular>
-<mirrorreflactance>0 0 0</mirrorreflactance>
+<mirrorreflactance>0.5 0.5 0.5</mirrorreflactance>
 <phongexponent>50</phongexponent>
 <texturefactor>0.5</texturefactor>
 </material>
 </materials>
 <vertexdata>
-0.0 -1.9 -4.0
--1.8 -1.9 -4.0
--0.9 -0.1 -4.0
-1.0 -1.9 -3.0
--0.8 -1.9 -3.0
-0.1 -0.1 -3.0
+1.0 -1.9 -4.0
+-0.8 -1.9 -4.0
+0.1 -0.1 -4.0
+2.0 -1.9 -3.0
+0.2 -1.9 -3.0
+1.1 -0.1 -3.0
+2.0 -1.9 -3.0001
+0.2 -1.9 -3.0001
+1.1 -0.1 -3.0001
 </vertexdata>
 <texturedata>
 1.000000 0.333333
@@ -58,6 +61,7 @@
 </texturedata>
 <normaldata>
 0.0 0.0 1.0
+0.0 0.0 -1.0
 </normaldata>
 <textureimage>my_texture_only_texture.png</textureimage>
 <objects>
@@ -71,6 +75,7 @@
 <materialid>1</materialid>
 <faces>
 4/1/1 5/1/1 6/1/1
+7/1/1 8/1/1 9/1/1
 </faces>
 </mesh>
 </objects>
