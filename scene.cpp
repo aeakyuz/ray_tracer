@@ -15,6 +15,7 @@
 using namespace rtracer;
 using std::cerr;
 using std::endl;
+using std::cout;
 using tinyxml2::XML_SUCCESS;
 using tinyxml2::XMLDocument;
 using tinyxml2::XMLElement;
@@ -450,12 +451,13 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
   Vector L_a = Vector(ambient.getLum().getU() * mat.getAmbient().getU(),
                       ambient.getLum().getV() * mat.getAmbient().getV(),
                       ambient.getLum().getW() * mat.getAmbient().getW());
-  // calculate diffuse
+
   Vector L_d = Vector();
+  Vector L_s = Vector();
   for (auto pl : pointLights) {
-    const Ray xToLight = Ray(x, pl.getPos());
+    const Ray xToLightRay = Ray(x, pl.getPos());
     // std::cout << "xToLight: " << xToLight.getDirection() << endl;
-    double cos = xToLight.getDirection().dotProduct(obj.getNormal());
+    double cos = xToLightRay.getDirection().dotProduct(obj.getNormal());
     // std::cout << "cos: " << cos << endl;
     cos = std::max(0.0, cos);
     double dist = x.calcDistance(pl.getPos());
@@ -466,11 +468,7 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
                       mat.getDiffuse().getW() * cos * pl.getIntensity().getW() /
                           (dist * dist));
     L_d = L_d + v;
-  }
 
-  // calculate specular
-  Vector L_s = Vector();
-  for (auto pl : pointLights) {
     Vector xToLight = Ray(x, pl.getPos()).getDirection();
     Vector l = xToLight.normalize();
     Vector e = -w_o;
@@ -485,6 +483,37 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
     L_s = L_s + L;
   }
 
+  for (auto tl : triangularLights) {
+    Ray rayToLight = Ray(x, -tl.getNormal());
+    double x_itrsct = rayToLight.isIntersecting(tl.getVertices());
+    if (x_itrsct != -1.0) {
+      double cos = rayToLight.getDirection().dotProduct(obj.getNormal());
+      cos = std::max(0.0, cos);
+      Point intersection = rayToLight.calculatePoint(x_itrsct);
+      double dist = intersection.calcDistance(x);
+      Vector v = Vector(mat.getDiffuse().getU() * cos * tl.getIntensity().getU() /
+                        (dist * dist),
+                        mat.getDiffuse().getV() * cos * tl.getIntensity().getV() /
+                        (dist * dist),
+                        mat.getDiffuse().getW() * cos * tl.getIntensity().getW() /
+                        (dist * dist));
+      L_d = L_d + v;
+
+      Vector xToLight = rayToLight.getDirection();
+      Vector l = xToLight.normalize();
+      Vector e = -w_o;
+      Vector h = (l + e);
+      h.normalize();
+
+      double nhp = pow(obj.getNormal().dotProduct(h), mat.getPhong());
+      Vector L =
+        Vector(tl.getIntensity().getU() * mat.getSpecular().getU() * nhp,
+               tl.getIntensity().getV() * mat.getSpecular().getV() * nhp,
+               tl.getIntensity().getW() * mat.getSpecular().getW() * nhp);
+      L_s = L_s + L;
+    }
+  }
+
   return L_a + L_d + L_s;
 }
 
@@ -495,9 +524,9 @@ bool Scene::saveToPPM(const std::string &filename) const {
   // Find maximum color value in the image
   Vector maxVals = findMaxColorValue();
   double maxVal = std::max({maxVals[0], maxVals[1], maxVals[2]});
-      // std::cout << "Max vals: " << maxVals << endl;
+  // std::cout << "Max vals: " << maxVals << endl;
 
-      std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+  std::ofstream file(filename, std::ios::binary | std::ios::trunc);
   if (!file)
     return false;
 
@@ -512,11 +541,11 @@ bool Scene::saveToPPM(const std::string &filename) const {
 
       // Clamp and convert to 8-bit
       unsigned char r = static_cast<unsigned char>(
-          std::clamp(normalized.getU(), 0.0, 1.0) * 255);
+        std::clamp(normalized.getU(), 0.0, 1.0) * 255);
       unsigned char g = static_cast<unsigned char>(
-          std::clamp(normalized.getV(), 0.0, 1.0) * 255);
+        std::clamp(normalized.getV(), 0.0, 1.0) * 255);
       unsigned char b = static_cast<unsigned char>(
-          std::clamp(normalized.getW(), 0.0, 1.0) * 255);
+        std::clamp(normalized.getW(), 0.0, 1.0) * 255);
 
       file << r << g << b;
 

@@ -13,7 +13,9 @@ class TriangularLight : public Light {
 private:
   Triangle vertices;
   Vector intensity;
+  Vector normal;
   size_t id;
+  const Vector setNormal();
 
 public:
   TriangularLight();
@@ -24,7 +26,7 @@ public:
   const Vector setIntensity(const Vector &intensity);
   const size_t getId(void) const;
   const size_t setId(const size_t id);
-
+  const Vector getNormal(void) const;
 };
 
 }

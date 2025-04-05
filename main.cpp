@@ -5,6 +5,7 @@
 #include "ray.hpp"
 #include "scene.hpp"
 #include "triangle.hpp"
+#include "triangularLight.hpp"
 #include "util.hpp"
 #include "vector.hpp"
 
@@ -77,6 +78,15 @@ int main(int argc, char *argv[]) {
   if (!scene.saveToPPM("output.ppm")) {
     std::cerr << "Failed to save image" << std::endl;
   }
+
+  // TriangularLight tl = TriangularLight(
+  //   Triangle(Point(0.5,0.5,0.5),
+  //            Point(1.2,0.5,0.5),
+  //            Point(0,0,0)),
+  //   Vector(0,0,0),
+  //   1
+  // );
+  // cout << "normal: " << tl.getNormal() << endl;
 
   return 0;
 }
