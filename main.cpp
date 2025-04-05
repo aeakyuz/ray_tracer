@@ -1,4 +1,4 @@
-// TODO: try to write into result into ppm file
+// TODO: implment shadows. DON'T FORGET ABOUT EPSILON!
 #include "camera.hpp"
 #include "matrix_3x3.hpp"
 #include "point.hpp"

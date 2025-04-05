@@ -16,6 +16,13 @@
 
 namespace rtracer {
 
+typedef struct FaceInfo {
+  Face face;
+  Material mat;
+  double t_min;
+  bool found;
+} FaceInfo;
+
 class Scene {
 public:
   size_t maxRTDepth;
@@ -41,6 +48,8 @@ public:
   bool saveToPPM(const std::string &filename) const;
   const Vector findMaxColorValue(void) const;
   void debug() const;
+  const FaceInfo findClosestObj(const Ray&) const;
+
 private:
   void parseBasicParameters(tinyxml2::XMLElement *);
   void parseCamera(tinyxml2::XMLElement *);

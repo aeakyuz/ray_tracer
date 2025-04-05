@@ -14,8 +14,8 @@
 
 using namespace rtracer;
 using std::cerr;
-using std::endl;
 using std::cout;
+using std::endl;
 using tinyxml2::XML_SUCCESS;
 using tinyxml2::XMLDocument;
 using tinyxml2::XMLElement;
@@ -418,28 +418,14 @@ void Scene::rayTrace(void) {
 
       // Create ray from camera position to S
       Ray viewRay = Ray(cam.getPosition(), S).normalizeRay();
-      double t_min = -1.0;
-      Face obj = Face();
-      bool found = false;
-      for (auto mesh : meshes) {
-        for (auto face : mesh) {
-          double t = viewRay.isIntersecting(face);
-          if (t > 0) { // if the ray intersects with the obj
-            if (t < t_min || t_min == -1.0) {
-              t_min = t;
-              obj = face;
-              found = true;
-            }
-          }
-        }
-        if (found) { // if obj is not null
-          Point x = viewRay.calculatePoint(t_min);
-          // std::cout << "itsct pnt: " << x << endl;
-          image[j][i] =
-              getColor(x, viewRay.getDirection(), mesh.getMaterial(), obj);
-        } else {
-          image[j][i] = bgColor;
-        }
+      FaceInfo fi = findClosestObj(viewRay);
+      if (fi.found) { // if obj is not null
+        Point x = viewRay.calculatePoint(fi.t_min);
+        // std::cout << "itsct pnt: " << x << endl;
+        image[j][i] =
+            getColor(x, viewRay.getDirection(), fi.mat, fi.face);
+      } else {
+        image[j][i] = bgColor;
       }
     }
   }
@@ -456,6 +442,11 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
   Vector L_s = Vector();
   for (auto pl : pointLights) {
     const Ray xToLightRay = Ray(x, pl.getPos());
+    Point newOrigin = xToLightRay.calculatePoint(EPS);
+    FaceInfo fi = findClosestObj(Ray(newOrigin, xToLightRay.getDirection()));
+    if (fi.found) {
+      continue;
+    }
     // std::cout << "xToLight: " << xToLight.getDirection() << endl;
     double cos = xToLightRay.getDirection().dotProduct(obj.getNormal());
     // std::cout << "cos: " << cos << endl;
@@ -485,18 +476,23 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
 
   for (auto tl : triangularLights) {
     Ray rayToLight = Ray(x, -tl.getNormal());
+    Point newOrigin = rayToLight.calculatePoint(EPS);
+    FaceInfo fi = findClosestObj(Ray(newOrigin, rayToLight.getDirection()));
+    if (fi.found) {
+      continue;
+    }
     double x_itrsct = rayToLight.isIntersecting(tl.getVertices());
     if (x_itrsct != -1.0) {
       double cos = rayToLight.getDirection().dotProduct(obj.getNormal());
       cos = std::max(0.0, cos);
       Point intersection = rayToLight.calculatePoint(x_itrsct);
       double dist = intersection.calcDistance(x);
-      Vector v = Vector(mat.getDiffuse().getU() * cos * tl.getIntensity().getU() /
-                        (dist * dist),
-                        mat.getDiffuse().getV() * cos * tl.getIntensity().getV() /
-                        (dist * dist),
-                        mat.getDiffuse().getW() * cos * tl.getIntensity().getW() /
-                        (dist * dist));
+      Vector v = Vector(mat.getDiffuse().getU() * cos *
+                            tl.getIntensity().getU() / (dist * dist),
+                        mat.getDiffuse().getV() * cos *
+                            tl.getIntensity().getV() / (dist * dist),
+                        mat.getDiffuse().getW() * cos *
+                            tl.getIntensity().getW() / (dist * dist));
       L_d = L_d + v;
 
       Vector xToLight = rayToLight.getDirection();
@@ -507,9 +503,9 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
 
       double nhp = pow(obj.getNormal().dotProduct(h), mat.getPhong());
       Vector L =
-        Vector(tl.getIntensity().getU() * mat.getSpecular().getU() * nhp,
-               tl.getIntensity().getV() * mat.getSpecular().getV() * nhp,
-               tl.getIntensity().getW() * mat.getSpecular().getW() * nhp);
+          Vector(tl.getIntensity().getU() * mat.getSpecular().getU() * nhp,
+                 tl.getIntensity().getV() * mat.getSpecular().getV() * nhp,
+                 tl.getIntensity().getW() * mat.getSpecular().getW() * nhp);
       L_s = L_s + L;
     }
   }
@@ -541,11 +537,11 @@ bool Scene::saveToPPM(const std::string &filename) const {
 
       // Clamp and convert to 8-bit
       unsigned char r = static_cast<unsigned char>(
-        std::clamp(normalized.getU(), 0.0, 1.0) * 255);
+          std::clamp(normalized.getU(), 0.0, 1.0) * 255);
       unsigned char g = static_cast<unsigned char>(
-        std::clamp(normalized.getV(), 0.0, 1.0) * 255);
+          std::clamp(normalized.getV(), 0.0, 1.0) * 255);
       unsigned char b = static_cast<unsigned char>(
-        std::clamp(normalized.getW(), 0.0, 1.0) * 255);
+          std::clamp(normalized.getW(), 0.0, 1.0) * 255);
 
       file << r << g << b;
 
@@ -581,4 +577,25 @@ void Scene::debug() const {
       std::cout << image[i][j] << endl;
     }
   }
+}
+
+const FaceInfo Scene::findClosestObj(const Ray &ray) const {
+  double t_min = -1.0;
+  Face obj = Face();
+  Material m;
+  bool found = false;
+  for (auto mesh : meshes) {
+    for (auto face : mesh) {
+      double t = ray.isIntersecting(face);
+      if (t > 0) { // if the ray intersects with the obj
+        if (t < t_min || t_min == -1.0) {
+          t_min = t;
+          obj = face;
+          found = true;
+          m = mesh.getMaterial();
+        }
+      }
+    }
+  }
+  return FaceInfo{obj, m, t_min, found};
 }
