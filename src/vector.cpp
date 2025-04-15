@@ -37,8 +37,18 @@ const Vector Vector::operator+(const Vector &other) const {
   return Vector(u+other.u, v+other.v, w+other.w);
 }
 
-const Point Vector::operator*(const double x) const {
-  return Point(u * x, v * x, w * x);
+const Vector Vector::operator*(const double x) const {
+  return Vector(u * x, v * x, w * x);
+}
+
+const Vector Vector::operator/(const double x) const {
+  return Vector(u / x, v / x, w / x);
+}
+
+const Vector Vector::operator*(const Vector &other) const {
+  return Vector(u * other.u,
+                v * other.v,
+                w * other.w);
 }
 
 const Vector Vector::operator-() const { return Vector(-u, -v, -w); }
@@ -85,9 +95,9 @@ const Vector Vector::normalize(void) {
   } else if (isWithinEps(length, 1.0)) {
     return *this;
   }
-  u = u / length;
-  v = v / length;
-  w = w / length;
+  u /= length;
+  v /= length;
+  w /= length;
   return *this;
 }
 
@@ -97,3 +107,7 @@ ostream &operator<<(ostream &os, const Vector &vec) {
   return os;
 }
 } // namespace rtracer
+
+const Point Vector::getPoint(void) const {
+  return Point(u, v, w);
+}

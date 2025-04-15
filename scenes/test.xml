@@ -1,0 +1,82 @@
+<scene>
+<maxraytracedepth>6</maxraytracedepth>
+<backgroundColor>0 0 0</backgroundColor>
+<camera>
+<position>0 0 0</position>
+<gaze>0 0 -1</gaze>
+<up>0 1 0</up>
+<nearPlane>-1 1 -1 1</nearPlane>
+<neardistance>1</neardistance>
+<imageresolution>800 800</imageresolution>
+</camera>
+<lights>
+<ambientlight>50 50 150</ambientlight>
+<pointlight id="1">
+<position>1.1 -0.1 -3.5</position>
+<intensity>400 400 100</intensity>
+</pointlight>
+<triangularlight id="2">
+<vertex1>3.0 -1.9 -3.0</vertex1>
+<vertex2>1.2 -1.9 -1.0</vertex2>
+<vertex3>2.1 0.1 -2.0</vertex3>
+<intensity>0 0 0</intensity>
+</triangularlight>
+</lights>
+<materials>
+<material id="1">
+<ambient>1 1 1</ambient>
+<diffuse>1 1 1</diffuse>
+<specular>1 1 1</specular>
+<mirrorreflactance>0.5 0.5 0.5</mirrorreflactance>
+<phongexponent>50</phongexponent>
+<texturefactor>0.5</texturefactor>
+</material>
+</materials>
+<vertexdata>
+1.0 -1.9 -4.0
+-0.8 -1.9 -4.0
+0.1 -0.1 -4.0
+2.0 -1.9 -3.0
+0.2 -1.9 -3.0
+1.1 -0.1 -3.0
+2.0 -1.9 -3.3
+0.2 -1.9 -3.3
+1.1 -0.1 -3.3
+</vertexdata>
+<texturedata>
+1.000000 0.333333
+1.000000 0.666667
+0.666667 0.666667
+0.666667 0.333333
+0.666667 0.000000
+0.000000 0.333333
+0.000000 0.000000
+0.333333 0.000000
+0.333333 1.000000
+0.000000 1.000000
+0.000000 0.666667
+0.333333 0.333333
+0.333333 0.666667
+1.000000 0.000000
+</texturedata>
+<normaldata>
+0.0 0.0 1.0
+0.0 0.0 -1.0
+</normaldata>
+<textureimage>textures/cow.jpg</textureimage>
+<objects>
+<mesh id="1">
+<materialid>1</materialid>
+<faces>
+1/1/1 2/1/1 3/1/1
+</faces>
+</mesh>
+<mesh id="2">
+<materialid>1</materialid>
+<faces>
+4/1/1 5/1/1 6/1/1
+7/1/1 8/1/1 9/1/1
+</faces>
+</mesh>
+</objects>
+</scene>

@@ -1,0 +1,207 @@
+<scene>
+    <maxraytracedepth>2</maxraytracedepth>
+
+    <backgroundColor>0 0 0</backgroundColor>
+
+        <camera>
+            <position>0 0 20</position>
+            <gaze>0 0 -1</gaze>
+            <up>0 1 0</up>
+            <nearPlane>-10 10 -10 10</nearPlane>
+            <neardistance>10</neardistance>
+            <imageresolution>480 480</imageresolution>
+        </camera>
+    
+
+    <lights>
+        <ambientlight>0 0 0</ambientlight>
+        <pointlight id="1">
+            <position>0 4 2</position>
+            <intensity>628000 628000 628000</intensity>
+        </pointlight>
+    </lights>
+
+    <materials>
+        <material id="1">
+            <ambient>1 1 1</ambient>
+            <diffuse>0.08 0.08 0.08</diffuse>
+            <specular>0 0 0</specular>
+            <mirrorreflactance>0 0 0</mirrorreflactance>
+            <phongexponent>1</phongexponent>
+            <texturefactor>0.8</texturefactor>
+        </material>
+        <material id="2">
+            <ambient>1 0 0</ambient>
+            <diffuse>0.1 0 0</diffuse>
+            <specular>0 0 0</specular>
+            <mirrorreflactance>0 0 0</mirrorreflactance>
+            <phongexponent>1</phongexponent>
+            <texturefactor>0</texturefactor>
+        </material>
+        <material id="3">
+            <ambient>0 0 1</ambient>
+            <diffuse>0 0 0.1</diffuse>
+            <specular>0 0 0</specular>
+            <mirrorreflactance>0 0 0</mirrorreflactance>
+            <phongexponent>1</phongexponent>
+            <texturefactor>0</texturefactor>
+        </material>
+        <material id="4">
+            <ambient>1 1 1</ambient>
+            <diffuse>0.08 0.08 0.08</diffuse>
+            <specular>0 0 0</specular>
+            <mirrorreflactance>0 0 0</mirrorreflactance>
+            <phongexponent>1</phongexponent>
+            <texturefactor>0</texturefactor>
+        </material>
+        <material id="5">
+            <ambient>1 1 1</ambient>
+            <diffuse>0 0 0</diffuse>
+            <specular>0 0 0</specular>
+            <mirrorreflactance>0.2 0.2 0.2</mirrorreflactance>
+            <phongexponent>1</phongexponent>
+            <texturefactor>0</texturefactor>
+        </material>
+        <material id="6">
+            <ambient>1 1 1</ambient>
+            <diffuse>0.05 0.05 0.05</diffuse>
+            <specular>0.1 0.1 0.1</specular>
+            <mirrorreflactance>0 0 0</mirrorreflactance>
+            <phongexponent>1</phongexponent>
+            <texturefactor>0</texturefactor>
+        </material>
+    </materials>
+
+    <vertexdata>
+        -10 -10 10
+        10 -10 10
+        10 10 10
+        -10 10 10
+        -10 -10 -10
+        10 -10 -10
+        10 10 -10
+        -10 10 -10
+        2.5 -7.5 -1.5
+        2.5 -7.5 3.5
+        2.5 -2.5 -1.5
+        2.5 -2.5 3.5
+        6.5 -7.5 -1.5
+        6.5 -7.5 3.5
+        6.5 -2.5 -1.5
+        6.5 -2.5 3.5
+        -6.5 -7.5 -7.5
+        -6.5 -7.5 -2.5
+        -6.5 -2.5 -7.5
+        -6.5 -2.5 -2.5
+        -1.5 -7.5 -7.5
+        -1.5 -7.5 -2.5
+        -1.5 -2.5 -7.5
+        -1.5 -2.5 -2.5
+    </vertexdata>
+    <texturedata>
+            1.000000 0.333333
+            1.000000 0.666667
+            0.666667 0.666667
+            0.666667 0.333333
+            0.666667 0.000000
+            0.000000 0.333333
+            0.000000 0.000000
+            0.333333 0.000000
+            0.333333 1.000000
+            0.000000 1.000000
+            0.000000 0.666667
+            0.333333 0.333333
+            0.333333 0.666667
+            1.000000 0.000000
+    </texturedata>
+    <normaldata>
+            0.000000 -1.000000 0.000000
+            0.000000 1.000000 0.000000
+            1.000000 0.000000 0.000000
+            0.000000 0.000000 1.000000
+            -1.000000 0.000000 -0.000000
+            0.000000 0.000000 -1.000000
+    </normaldata>
+    <textureimage>textures/cow.jpg</textureimage>
+    <objects>
+        <mesh id="1">
+            <materialid>1</materialid>
+            <faces>
+                1/1/2 2/2/2 6/3/2
+                6/6/2 5/5/2 1/4/2
+            </faces>
+        </mesh>
+        <mesh id="2">
+            <materialid>1</materialid>
+            <faces>
+                5/7/4 6/8/4 7/9/4
+                7/12/4 8/11/4 5/10/4
+            </faces>
+        </mesh>
+        <mesh id="3">
+            <materialid>1</materialid>
+            <faces>
+                7/13/1 3/14/1 4/1/1
+                4/4/1 8/3/1 7/2/1
+            </faces>
+        </mesh>
+        <mesh id="4">
+            <materialid>2</materialid>
+            <faces>
+                8/1/3 4/1/3 1/1/3
+                8/1/3 1/1/3 5/1/3
+            </faces>
+        </mesh>
+        <mesh id="5">
+            <materialid>3</materialid>
+            <faces>
+                2/1/5 3/1/5 7/1/5
+                2/1/5 7/1/5 6/1/5
+            </faces>
+        </mesh>
+        <mesh id="6">
+            <materialid>5</materialid>
+            <faces>
+                9/3/1 13/3/1 10/3/1
+                10/3/1 13/3/1 14/3/1
+                11/3/2 15/3/2 12/3/2
+                12/3/2 15/3/2 16/3/2
+                11/3/5 12/3/5 9/3/5
+                9/3/5 12/3/5 10/3/5
+                16/3/3 15/3/3 14/3/3
+                14/3/3 15/3/3 13/3/3
+                12/3/4 16/3/4 10/3/4
+                10/3/4 16/3/4 14/3/4
+                11/3/6 15/3/6 9/3/6
+                9/3/6 15/3/6 13/3/6
+            </faces>
+        </mesh>
+        <mesh id="7">
+            <materialid>5</materialid>
+            <faces>
+                17/3/1 21/3/1 18/3/1
+                18/3/1 21/3/1 22/3/1
+                19/3/2 23/3/2 20/3/2
+                20/3/2 23/3/2 24/3/2
+                19/3/5 20/3/5 17/3/5
+                17/3/5 20/3/5 18/3/5
+                24/3/3 23/3/3 22/3/3
+                22/3/3 23/3/3 21/3/3
+                20/3/4 24/3/4 18/3/4
+                18/3/4 24/3/4 22/3/4
+                19/3/6 23/3/6 17/3/6
+                17/3/6 23/3/6 21/3/6
+            </faces>
+        </mesh>
+        <!-- <Sphere id="1"> -->
+        <!--     <materialid>4</materialid> -->
+        <!--     <Center>9</Center> -->
+        <!--     <Radius>4</Radius> -->
+        <!-- </Sphere> -->
+        <!-- <Sphere id="2"> -->
+        <!--     <materialid>5</materialid> -->
+        <!--     <Center>10</Center> -->
+        <!--     <Radius>4</Radius> -->
+        <!-- </Sphere> -->
+    </objects>
+</scene>

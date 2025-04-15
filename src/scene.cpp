@@ -21,7 +21,7 @@ using tinyxml2::XMLDocument;
 using tinyxml2::XMLElement;
 
 Scene::Scene()
-    : maxRTDepth(0), bgColor(Vector()), cam(Camera()), ambient(AmbientLight()),
+    : maxRTDepth(0), bgColor(Vector()), cam(Camera()), ambient(AmbientLight()), tex(Texture()),
       pointLights(std::vector<PointLight>()),
       triangularLights(std::vector<TriangularLight>()),
       materials(std::vector<Material>()), vertices(std::vector<Point>()),
@@ -66,6 +66,8 @@ bool Scene::loadFromXML(const std::string xmlPath) {
   // Parse objects
   parseObjects(sceneElement);
 
+  tex = Texture(textureImage);
+
   return true;
 }
 
@@ -105,7 +107,7 @@ void Scene::parseCamera(XMLElement *sceneElement) {
     const char *gazeText = gazeElem->GetText();
     double gaze[3];
     sscanf(gazeText, "%lf %lf %lf", &gaze[0], &gaze[1], &gaze[2]);
-    cam.setGaze(Vector(gaze[0], gaze[1], gaze[2]));
+    cam.setGaze(Vector(gaze[0], gaze[1], gaze[2]).normalize());
   }
 
   // Camera up vector
@@ -114,7 +116,7 @@ void Scene::parseCamera(XMLElement *sceneElement) {
     const char *upText = upElem->GetText();
     double up[3];
     sscanf(upText, "%lf %lf %lf", &up[0], &up[1], &up[2]);
-    cam.setUp(Vector(up[0], up[1], up[2]));
+    cam.setUp(Vector(up[0], up[1], up[2]).normalize());
   }
 
   // Near plane
@@ -392,18 +394,18 @@ void Scene::parseFaceVertex(const std::string &vertexStr, Face &face,
 
   if (slash1 != std::string::npos && slash2 != std::string::npos) {
     face.setVertex(vertexIndex, vertices.at(vertexId));
-    face.setTexture(textureData.at(textureId));
-    face.setNormal(normals.at(normalId));
+    face.setTexture(vertexIndex, textureData.at(textureId));
+    face.setNormal(vertexIndex, normals.at(normalId));
   } else {
     // Handle error case
     cerr << "Malformed face vertex: " << vertexStr << endl;
   }
 }
 
-void Scene::rayTrace(void) {
-  const Point M = cam.getPosition() + (cam.getGaze() * cam.getDistance());
-  const Point Q = M + (Vector::UNIT_VEC_U * cam.getImagePlane().getL()) +
-                  (Vector::UNIT_VEC_V * cam.getImagePlane().getT());
+void Scene::traceRays(void) {
+  const Point M = ((Vector)cam.getPosition() + (cam.getGaze() * cam.getDistance())).getPoint();
+  const Point Q = ((Vector)M + (Vector::UNIT_VEC_U * cam.getImagePlane().getL()) +
+    (Vector::UNIT_VEC_V * cam.getImagePlane().getT())).getPoint();
 
   for (size_t i = 0; i < cam.getImagePlane().getNx(); ++i) {
     for (size_t j = 0; j < cam.getImagePlane().getNy(); ++j) {
@@ -414,11 +416,11 @@ void Scene::rayTrace(void) {
           ((cam.getImagePlane().getT() - cam.getImagePlane().getB()) *
            (j + 0.5) / cam.getImagePlane().getNy());
       const Point S =
-          Q + (Vector::UNIT_VEC_U * Su) + (-Vector::UNIT_VEC_V * Sv);
+          ((Vector)Q + (Vector::UNIT_VEC_U * Su) + (-Vector::UNIT_VEC_V * Sv)).getPoint();
 
       // Create ray from camera position to S
       Ray viewRay = Ray(cam.getPosition(), S).normalizeRay();
-      image[j][i] = rayTrace(viewRay, 1);
+      image[j][i] = rayTraceHelper(viewRay, 1);
     }
   }
 }
@@ -426,31 +428,28 @@ void Scene::rayTrace(void) {
 const Vector Scene::getColor(const Point &x, const Vector &w_o,
                              const Material &mat, const Face &obj,
                              size_t rtCount) const {
+  Vector base = tex.getColor(obj.getTexture(x).getU(), obj.getTexture(x).getV()) * mat.getTextureFactor();
+  Vector ambient_coeff = base + mat.getAmbient() * (1-mat.getTextureFactor());
+  Vector diffuse_coeff = base + mat.getDiffuse() * (1-mat.getTextureFactor());
+  Vector specular_coeff = mat.getSpecular();
+
   // calculate ambient
-  Vector L_a = Vector(ambient.getLum().getU() * mat.getAmbient().getU(),
-                      ambient.getLum().getV() * mat.getAmbient().getV(),
-                      ambient.getLum().getW() * mat.getAmbient().getW());
+  Vector L_a = (ambient.getLum()) * ambient_coeff;
 
   Vector L_d = Vector();
   Vector L_s = Vector();
   for (auto pl : pointLights) {
     const Ray xToLightRay = Ray(x, pl.getPos());
     Point newOrigin = xToLightRay.calculatePoint(EPS);
-    FaceInfo fi = findClosestObj(Ray(newOrigin, xToLightRay.getDirection()));
-    if (fi.found) {
-      continue;
-    }
-    // std::cout << "xToLight: " << xToLight.getDirection() << endl;
-    double cos = xToLightRay.getDirection().dotProduct(obj.getNormal());
-    // std::cout << "cos: " << cos << endl;
+    FaceInfo fi = findClosestObj(Ray(newOrigin, pl.getPos()));
+    double cos = xToLightRay.getDirection().dotProduct(obj.getNormal(x));
     cos = std::max(0.0, cos);
     double dist = x.calcDistance(pl.getPos());
-    Vector v = Vector(mat.getDiffuse().getU() * cos * pl.getIntensity().getU() /
-                          (dist * dist),
-                      mat.getDiffuse().getV() * cos * pl.getIntensity().getV() /
-                          (dist * dist),
-                      mat.getDiffuse().getW() * cos * pl.getIntensity().getW() /
-                          (dist * dist));
+    if (fi.found && fi.t_min < dist) {
+      continue;
+    }
+    Vector v = diffuse_coeff * (pl.getIntensity() / (dist * dist)) * cos;
+
     L_d = L_d + v;
 
     Vector xToLight = Ray(x, pl.getPos()).getDirection();
@@ -459,11 +458,8 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
     Vector h = (l + e);
     h.normalize();
 
-    double nhp = pow(obj.getNormal().dotProduct(h), mat.getPhong());
-    Vector L =
-        Vector(pl.getIntensity().getU() * mat.getSpecular().getU() * nhp,
-               pl.getIntensity().getV() * mat.getSpecular().getV() * nhp,
-               pl.getIntensity().getW() * mat.getSpecular().getW() * nhp);
+    double nhp = pow(obj.getNormal(x).dotProduct(h), mat.getPhong());
+    Vector L = (pl.getIntensity() / (dist * dist)) * specular_coeff * nhp;
     L_s = L_s + L;
   }
 
@@ -471,21 +467,16 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
     Ray rayToLight = Ray(x, -tl.getNormal());
     Point newOrigin = rayToLight.calculatePoint(EPS);
     FaceInfo fi = findClosestObj(Ray(newOrigin, rayToLight.getDirection()));
-    if (fi.found) {
-      continue;
-    }
     double x_itrsct = rayToLight.isIntersecting(tl.getVertices());
-    if (x_itrsct != -1.0) {
-      double cos = rayToLight.getDirection().dotProduct(obj.getNormal());
+    if (x_itrsct > 0) {
+      double cos = rayToLight.getDirection().dotProduct(obj.getNormal(x));
       cos = std::max(0.0, cos);
       Point intersection = rayToLight.calculatePoint(x_itrsct);
       double dist = intersection.calcDistance(x);
-      Vector v = Vector(mat.getDiffuse().getU() * cos *
-                            tl.getIntensity().getU() / (dist * dist),
-                        mat.getDiffuse().getV() * cos *
-                            tl.getIntensity().getV() / (dist * dist),
-                        mat.getDiffuse().getW() * cos *
-                            tl.getIntensity().getW() / (dist * dist));
+      if (fi.found && fi.t_min < dist) {
+        continue;
+      }
+      Vector v = diffuse_coeff * (tl.getIntensity() / (dist * dist)) * cos;
       L_d = L_d + v;
 
       Vector xToLight = rayToLight.getDirection();
@@ -494,33 +485,24 @@ const Vector Scene::getColor(const Point &x, const Vector &w_o,
       Vector h = (l + e);
       h.normalize();
 
-      double nhp = pow(obj.getNormal().dotProduct(h), mat.getPhong());
-      Vector L =
-          Vector(tl.getIntensity().getU() * mat.getSpecular().getU() * nhp,
-                 tl.getIntensity().getV() * mat.getSpecular().getV() * nhp,
-                 tl.getIntensity().getW() * mat.getSpecular().getW() * nhp);
+      double nhp = pow(obj.getNormal(x).dotProduct(h), mat.getPhong());
+      Vector L = (tl.getIntensity() / (dist * dist)) * specular_coeff * nhp;
       L_s = L_s + L;
     }
   }
+  Vector before_reflection = (L_a + L_d + L_s);
   if (mat.getMirror() != Vector::ZERO_VECTOR) {
     Vector d = w_o;
-    Vector n = obj.getNormal();
-    if (isWithinEps(0.0, d.dotProduct(n))) {
-      return L_a + L_d + L_s;
-    }
+    Vector n = obj.getNormal(x);
     Vector r = d + n * ((-d).dotProduct(n)) * 2;
     r.normalize();
     Ray reflection_ray = Ray(x, r);
     Ray ray_adjusted = Ray(reflection_ray.calculatePoint(EPS), r);
-    Vector mirror = rayTrace(ray_adjusted, rtCount + 1);
-    Vector L_m = Vector(
-      mirror.getU() * mat.getMirror().getU(),
-      mirror.getV() * mat.getMirror().getV(),
-      mirror.getW() * mat.getMirror().getW()
-    );
-    return L_a + L_d + L_s + L_m;
+    Vector mirror = rayTraceHelper(ray_adjusted, rtCount + 1);
+    Vector L_m = mirror * mat.getMirror();
+    return before_reflection + L_m;
   } else {
-    return L_a + L_d + L_s;
+    return before_reflection;
   }
 }
 
@@ -528,41 +510,22 @@ bool Scene::saveToPPM(const std::string &filename) const {
   if (image.empty())
     return false;
 
-  // Find maximum color value in the image
-  Vector maxVals = findMaxColorValue();
-  double maxVal = std::max({maxVals[0], maxVals[1], maxVals[2]});
-  // std::cout << "Max vals: " << maxVals << endl;
-
   std::ofstream file(filename, std::ios::binary | std::ios::trunc);
   if (!file)
     return false;
 
-  file << "P6\n" << image[0].size() << " " << image.size() << "\n255\n";
+  file << "P6\n" << image[0].size() << " " << image.size() << "\n" << MAX_COLOR_VAL << "\n";
 
   for (const auto &row : image) {
     for (const Vector &pixel : row) {
-      // // Normalize and apply simple gamma correction
-      // Vector normalized(pow(pixel.getU() / maxVal, 1 / 2.2f),
-      //                   pow(pixel.getV() / maxVal, 1 / 2.2f),
-      //                   pow(pixel.getW() / maxVal, 1 / 2.2f));
-      //
-      // // Clamp and convert to 8-bit
-      // unsigned char r = static_cast<unsigned char>(
-      //     std::clamp(normalized.getU(), 0.0, 1.0) * 255);
-      // unsigned char g = static_cast<unsigned char>(
-      //     std::clamp(normalized.getV(), 0.0, 1.0) * 255);
-      // unsigned char b = static_cast<unsigned char>(
-      //     std::clamp(normalized.getW(), 0.0, 1.0) * 255);
-      //
-      // file << r << g << b;
 
       // Clamp and convert to 8-bit
       unsigned char r = static_cast<unsigned char>(
-          std::clamp((int)pixel.getU(), 0, 255));
+          std::clamp((int)(pixel.getU()), 0, MAX_COLOR_VAL));
       unsigned char g = static_cast<unsigned char>(
-          std::clamp((int)pixel.getV(), 0, 255));
+          std::clamp((int)(pixel.getV()), 0, MAX_COLOR_VAL));
       unsigned char b = static_cast<unsigned char>(
-          std::clamp((int)pixel.getW(), 0, 255));
+          std::clamp((int)(pixel.getW()), 0, MAX_COLOR_VAL));
 
       file << r << g << b;
     }
@@ -570,24 +533,9 @@ bool Scene::saveToPPM(const std::string &filename) const {
   return true;
 }
 
-const Vector Scene::findMaxColorValue(void) const {
-  double maxU = 0.0, maxV = 0.0, maxW = 0.0;
-  for (const auto &row : image) {
-    for (const Vector &pixel : row) {
-      maxU = std::max({maxU, pixel.getU(), bgColor.getU()});
-      maxV = std::max({maxV, pixel.getV(), bgColor.getV()});
-      maxW = std::max({maxW, pixel.getW(), bgColor.getW()});
-    }
-  }
-  maxU = maxU == 0.0 ? 1.0 : maxU;
-  maxV = maxV == 0.0 ? 1.0 : maxV;
-  maxW = maxW == 0.0 ? 1.0 : maxW;
-  return Vector(maxU, maxV, maxW);
-}
-
 void Scene::debug() const {
-  for (size_t i = 0; i < image.size(); i = i + 50) {
-    for (size_t j = 0; j < image[i].size(); j = j + 50) {
+  for (size_t i = 0; i < image.size(); ++i) {
+    for (size_t j = 0; j < image[i].size(); ++j) {
       printf("Vector[%zu][%zu] = ", i, j);
       std::cout << image[i][j] << endl;
     }
@@ -615,10 +563,9 @@ const FaceInfo Scene::findClosestObj(const Ray &ray) const {
   return FaceInfo{obj, m, t_min, found};
 }
 
-const Vector Scene::rayTrace(const Ray &ray, size_t rtCount) const {
+const Vector Scene::rayTraceHelper(const Ray &ray, size_t rtCount) const {
   Vector color = Vector::ZERO_VECTOR;
   if (rtCount > maxRTDepth) {
-    cout << "limit" << endl;
     return color;
   }
   FaceInfo fi = findClosestObj(ray);
@@ -630,4 +577,14 @@ const Vector Scene::rayTrace(const Ray &ray, size_t rtCount) const {
     color = bgColor;
   }
   return color;
+}
+
+void Scene::rayTrace(const vector<Ray> &rays, size_t begin, size_t end) {
+  for (size_t k = begin; k < end; ++k) {
+    // TODO: From i, calculate i and j appropriately.
+    // View rays are put column first.
+    size_t j = k % cam.getImagePlane().getNy();
+    size_t i = k / cam.getImagePlane().getNx();
+    image[j][i] = rayTraceHelper(rays.at(k), 1);
+  }
 }

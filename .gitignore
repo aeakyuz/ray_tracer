@@ -1,3 +1,5 @@
 *.o
 main
 *.ppm
+*.png
+temp/

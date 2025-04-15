@@ -7,6 +7,7 @@
 #include "mesh.hpp"
 #include "point.hpp"
 #include "pointLight.hpp"
+#include "texture.hpp"
 #include "tinyxml2.h"
 #include "triangularLight.hpp"
 #include "vector.hpp"
@@ -29,6 +30,7 @@ public:
   Vector bgColor;
   Camera cam;
   AmbientLight ambient;
+  Texture tex;
   std::vector<PointLight> pointLights;
   std::vector<TriangularLight> triangularLights;
   std::vector<Material> materials;
@@ -42,11 +44,11 @@ public:
   Scene();
   Scene(const std::string xmlPath);
   bool loadFromXML(const std::string xmlPath);
-  void rayTrace(void);
+  void traceRays(void);
+  void rayTrace(const vector<Ray> &ray, size_t begin, size_t end);
   const Vector getColor(const Point &x, const Vector &w_o, const Material &mat,
                         const Face &obj, size_t rtCount) const;
   bool saveToPPM(const std::string &filename) const;
-  const Vector findMaxColorValue(void) const;
   void debug() const;
   const FaceInfo findClosestObj(const Ray&) const;
 
@@ -58,7 +60,7 @@ private:
   void parseGeometry(tinyxml2::XMLElement *);
   void parseObjects(tinyxml2::XMLElement *);
   void parseFaceVertex(const std::string &, Face &, int);
-  const Vector rayTrace(const Ray &, size_t) const;
+  const Vector rayTraceHelper(const Ray &, size_t) const;
 };
 
 } // namespace rtracer

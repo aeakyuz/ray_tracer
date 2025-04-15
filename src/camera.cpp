@@ -31,17 +31,20 @@ const int Camera::setDistance(const int dist) { return distance = dist; }
 
 const vector<Ray> Camera::calculateViewRays(void) const {
   vector<Ray> rays = vector<Ray>();
-  const Point M = position + (gaze * distance);
-  const Point Q = M + (Vector::UNIT_VEC_U * imagePlane.getL()) +
-                  (Vector::UNIT_VEC_V * imagePlane.getT());
-  for (size_t i = 0; i < imagePlane.getNx(); ++i) {
-    for (size_t j = 0; j < imagePlane.getNy(); ++j) {
-      const double Su = (imagePlane.getR() - imagePlane.getL())
-        * (i + 0.5) / imagePlane.getNx();
-      const double Sv = ((imagePlane.getT() - imagePlane.getB())
-        * (j + 0.5) / imagePlane.getNy());
+  const Point M = ((Vector)getPosition() + (getGaze() * getDistance())).getPoint();
+  const Point Q = ((Vector)M + (Vector::UNIT_VEC_U * getImagePlane().getL()) +
+    (Vector::UNIT_VEC_V * getImagePlane().getT())).getPoint();
+
+  for (size_t i = 0; i < getImagePlane().getNx(); ++i) {
+    for (size_t j = 0; j < getImagePlane().getNy(); ++j) {
+      const double Su =
+          (getImagePlane().getR() - getImagePlane().getL()) *
+          (i + 0.5) / getImagePlane().getNx();
+      const double Sv =
+          ((getImagePlane().getT() - getImagePlane().getB()) *
+           (j + 0.5) / getImagePlane().getNy());
       const Point S =
-          Q + (Vector::UNIT_VEC_U * Su) + (-Vector::UNIT_VEC_V * Sv);
+          ((Vector)Q + (Vector::UNIT_VEC_U * Su) + (-Vector::UNIT_VEC_V * Sv)).getPoint();
 
       // Create ray from camera position to S
       rays.push_back(Ray(position, S).normalizeRay());

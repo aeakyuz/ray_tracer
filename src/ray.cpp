@@ -67,11 +67,6 @@ const double Ray::isIntersecting(const Triangle &tri) const {
 
   double det_A = A.determinant();
 
-  // cout << "Matrix A:\n";
-  // cout << A << endl;
-  // cout << "|A|:\n";
-  // cout << det_A << endl;
-  
   if (isWithinEps(det_A, 0.0)) {
     return -1.0;
   }
@@ -84,11 +79,6 @@ const double Ray::isIntersecting(const Triangle &tri) const {
 
   double beta = matrix_beta.determinant() / det_A;
 
-  // cout << "Matrix Beta:\n";
-  // cout << matrix_beta << endl;
-  // cout << "|B|:\n";
-  // cout << beta << endl;
-  
   Matrix_3x3 matrix_gamma = Matrix_3x3({
     Vector(a_x - b_x, a_y - b_y, a_z - b_z),
     Vector(a_x - o_x, a_y - o_y, a_z - o_z),
@@ -97,11 +87,6 @@ const double Ray::isIntersecting(const Triangle &tri) const {
 
   double gamma = matrix_gamma.determinant() / det_A;
 
-  // cout << "Matrix Gamma:\n";
-  // cout << matrix_gamma << endl;
-  // cout << "|G|:\n";
-  // cout << gamma << endl;
-  
   Matrix_3x3 matrix_t = Matrix_3x3({
     Vector(a_x - b_x, a_y - b_y, a_z - b_z),
     Vector(a_x - c_x, a_y - c_y, a_z - c_z),
@@ -110,16 +95,8 @@ const double Ray::isIntersecting(const Triangle &tri) const {
 
   double t = matrix_t.determinant() / det_A;
 
-  // cout << "Matrix T:\n";
-  // cout << matrix_t << endl;
-  // cout << "t:\n";
-  // cout << t << endl;
-  
-  // printf("detA=%lf B=%lf G=%lf B+G=%lf detT=%lf t=%lf\n", det_A,
-  //        beta, gamma, beta+gamma, matrix_t.determinant(), t);
-
-  if (t >= 0.0 && beta + gamma < 1.0
-  && (beta > 0.0 || isWithinEps(beta, 0.0)) && (gamma > 0.0 || isWithinEps(gamma, 0.0))) {
+  if (beta + gamma < 1.0 && (beta >= 0.0)
+    && (gamma >= 0.0)) {
     return t;
   }
   else {
@@ -156,5 +133,5 @@ ostream &operator<<(ostream &os, const Point &point) {
 } // namespace rtracer
 
 const Point Ray::calculatePoint(const double x) const {
-  return origin + (direction * x);
+  return ((Vector)origin + (direction * x)).getPoint();
 }

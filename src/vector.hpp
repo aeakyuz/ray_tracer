@@ -37,7 +37,9 @@ public:
   const double getLength(void) const;
 
   const Vector operator+(const Vector &) const;
-  const Point operator*(const double x) const;
+  const Vector operator*(const double x) const;
+  const Vector operator/(const double x) const;
+  const Vector operator*(const Vector &other) const;
   const Vector operator-() const;
   const Vector operator-(const Vector &) const;
   double &operator[](const size_t idx);
@@ -47,6 +49,7 @@ public:
   const double dotProduct(const Vector &other) const;
   const Vector crossProduct(const Vector &other) const;
   const Vector normalize(void);
+  const Point getPoint(void) const;
 
   friend ostream &operator<<(ostream &os, const Vector &ray);
 };

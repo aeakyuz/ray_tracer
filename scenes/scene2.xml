@@ -1,0 +1,103 @@
+<scene>
+	<maxraytracedepth>6</maxraytracedepth>
+	<backgroundColor>0 0 0</backgroundColor>
+	<camera>
+		<position>0 0 0</position>
+		<gaze>0 0 -1</gaze>
+		<up>0 1 0</up>
+		<nearPlane>-1 1 -1 1</nearPlane>
+		<neardistance>1</neardistance>
+		<imageresolution>1080 1080</imageresolution>
+		</camera>
+	<lights>
+		<ambientlight>25 25 25</ambientlight>
+		<pointlight id="1">
+			<position>0.0 1.0 -2.0</position>
+			<intensity>800 800 800</intensity>
+			</pointlight>
+		<!-- <triangularlight id="2"> -->
+		<!-- 	<vertex1>3.0 -1.9 -3.0</vertex1> -->
+		<!-- 	<vertex2>1.2 -1.9 -1.0</vertex2> -->
+		<!-- 	<vertex3>2.1 0.1 -2.0</vertex3> -->
+		<!-- 	<intensity>0 0 0</intensity> -->
+		<!-- 	</triangularlight> -->
+		<!-- <pointlight id="3"> -->
+		<!-- <position>-0.9 -0.9 1.0</position> -->
+		<!-- <intensity>200 0 0</intensity> -->
+		<!-- </pointlight> -->
+		<!-- <pointlight id="4"> -->
+		<!-- <position>0.9 -0.9 1.0</position> -->
+		<!-- <intensity>0 0 200</intensity> -->
+		<!-- </pointlight> -->
+		</lights>
+	<materials>
+		<material id="1">
+			<ambient>1 0 0.3</ambient>
+			<diffuse>1 0 0.3</diffuse>
+			<specular>1 0 0.3</specular>
+			<mirrorreflactance>0.5 0.5 0.5</mirrorreflactance>
+			<phongexponent>5</phongexponent>
+			<texturefactor>0.5</texturefactor>
+			</material>
+		<material id="2">
+			<ambient>0 0 1</ambient>
+			<diffuse>0 0 1</diffuse>
+			<specular>0 0 1</specular>
+			<mirrorreflactance>0.9 0.9 0.9</mirrorreflactance>
+			<phongexponent>5</phongexponent>
+			<texturefactor>0.5</texturefactor>
+			</material>
+		</materials>
+	<!-- top, left, right -->
+	<!-- top: left by 1 -->
+	<!-- left: forward by 1 -->
+	<!-- right: backward by 1 -->
+	<vertexdata>
+		-0.5 0.5 -3
+		-1.0 -0.5 -2
+		0.5 -0.5 -4
+		0.5 0.5 -2
+		0 -0.5 -1
+		1.5 -0.5 -3
+		2.0 -1.9 -3.0001
+		0.2 -1.9 -3.0001
+		1.1 -0.1 -3.0001
+		</vertexdata>
+	<texturedata>
+		1.000000 0.333333
+		1.000000 0.666667
+		0.666667 0.666667
+		0.666667 0.333333
+		0.666667 0.000000
+		0.000000 0.333333
+		0.000000 0.000000
+		0.333333 0.000000
+		0.333333 1.000000
+		0.000000 1.000000
+		0.000000 0.666667
+		0.333333 0.333333
+		0.333333 0.666667
+		1.000000 0.000000
+		</texturedata>
+	<normaldata>
+		0.0 0.0 1.0
+		0.0 0.0 -1.0
+		0.5 0.0 0.5
+		-0.5 0.0 -0.5
+		</normaldata>
+	<textureimage>textures/cow.jpg</textureimage>
+	<objects>
+		<mesh id="1">
+			<materialid>1</materialid>
+			<faces>
+				1/1/3 2/1/3 3/1/3
+				</faces>
+			</mesh>
+		<mesh id="2">
+			<materialid>2</materialid>
+			<faces>
+				4/1/4 5/1/4 6/1/4
+				</faces>
+			</mesh>
+		</objects>
+	</scene>
